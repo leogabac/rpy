@@ -147,6 +147,17 @@ Done when:
 
 - `rpy` can report usable Python binaries
 
+Implementation direction:
+
+- keep discovery and installation separate
+- treat Python installs as managed runtimes under `~/.rpy/pythons/<version>/`
+- maintain a small metadata file per runtime with source URL, build flags, and platform
+- allow `rpy env create --python 3.12.3` to resolve through:
+  1. managed runtimes
+  2. explicit executable paths
+  3. PATH discovery
+- start with prebuilt CPython downloads where available before attempting local source builds
+
 ## Phase 7: Optional uv backend
 
 Goal: make `uv` an optional backend, not the default assumption.
@@ -172,3 +183,16 @@ Done when:
 
 - `rpy` can manage Python versions without relying on the system install alone
 
+Proposed first cut:
+
+- add `rpy py install 3.12.3`
+- download official standalone builds or python-build-standalone artifacts into `~/.rpy/downloads/`
+- unpack into `~/.rpy/pythons/3.12.3/`
+- register metadata in `~/.rpy/pythons/3.12.3/rpy.json`
+- wire `rpy env create --python 3.12.3` to use that managed interpreter
+
+Non-goals for the first installer:
+
+- no source compilation
+- no patch-level auto-upgrade
+- no full pyenv-style plugin ecosystem
