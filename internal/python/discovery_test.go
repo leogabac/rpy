@@ -3,6 +3,8 @@ package python
 import (
 	"os"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"testing"
 )
 
@@ -45,5 +47,81 @@ func TestManagedPythonPathFallsBackToVersionedBinary(t *testing.T) {
 	}
 	if got != python312 {
 		t.Fatalf("managedPythonPath() = %q, want %q", got, python312)
+	}
+}
+
+func TestDiscoverIncludesManagedAndPath(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	managedRoot := filepath.Join(home, ".rpy", "pythons", "3.12.0", "bin")
+	if err := os.MkdirAll(managedRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	managedPython := filepath.Join(managedRoot, "python3")
+	if err := os.WriteFile(managedPython, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	pathDir := filepath.Join(t.TempDir(), "bin")
+	if err := os.MkdirAll(pathDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	pathPython := filepath.Join(pathDir, "python3.11")
+	if err := os.WriteFile(pathPython, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", pathDir)
+
+	items, err := Discover()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	paths := make([]string, 0, len(items))
+	for _, item := range items {
+		paths = append(paths, item.Path)
+	}
+
+	if !slices.Contains(paths, managedPython) {
+		t.Fatalf("Discover() missing managed python %q", managedPython)
+	}
+	if !slices.Contains(paths, pathPython) {
+		t.Fatalf("Discover() missing PATH python %q", pathPython)
+	}
+}
+
+func TestResolveDefaultFallsBackToManaged(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("PATH", filepath.Join(t.TempDir(), "empty"))
+
+	managedRoot := filepath.Join(home, ".rpy", "pythons", "3.12.0", "bin")
+	if err := os.MkdirAll(managedRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	managedPython := filepath.Join(managedRoot, "python3")
+	if err := os.WriteFile(managedPython, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	item, err := ResolveDefault()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if item.Path != managedPython {
+		t.Fatalf("ResolveDefault() = %q, want %q", item.Path, managedPython)
+	}
+}
+
+func TestCompareVersionish(t *testing.T) {
+	if got := compareVersionish("3.12.0", "3.11.9"); got <= 0 {
+		t.Fatalf("compareVersionish() = %d, want > 0", got)
+	}
+	if got := compareVersionish("python3.12", "python3.9"); got <= 0 {
+		t.Fatalf("compareVersionish() = %d, want > 0", got)
+	}
+	if runtime.GOOS == "" {
+		t.Fatal("unreachable")
 	}
 }

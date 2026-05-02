@@ -50,12 +50,10 @@ func findPython(requested string) (string, error) {
 		return interpreter.Path, nil
 	}
 
-	for _, name := range []string{"python", "python3"} {
-		path, err := exec.LookPath(name)
-		if err == nil {
-			return path, nil
-		}
+	interpreter, err := python.ResolveDefault()
+	if err != nil {
+		return "", err
 	}
 
-	return "", fmt.Errorf("could not find python or python3 on PATH")
+	return interpreter.Path, nil
 }

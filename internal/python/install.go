@@ -15,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/pterm/pterm"
 )
 
 const pythonSourceBaseURL = "https://www.python.org/ftp/python"
@@ -37,10 +39,15 @@ var httpClient = &http.Client{
 	Timeout: 30 * time.Second,
 }
 
+type installUI struct{}
+
 func Install(version string, opts InstallOptions) error {
 	if runtime.GOOS != "linux" {
 		return fmt.Errorf("managed installs currently support Linux only")
 	}
+
+	ui := installUI{}
+	ui.header(version)
 
 	destRoot, err := managedInstallDir(version)
 	if err != nil {
@@ -55,16 +62,19 @@ func Install(version string, opts InstallOptions) error {
 	sourceURL := ""
 	if archivePath == "" {
 		sourceURL = sourceArchiveURL(version)
-		fmt.Printf("fetching Python %s from %s\n", version, sourceURL)
+		stage := ui.startStage("Fetching source archive")
+		stage.updateDetail(sourceURL)
 		archivePath, err = downloadSource(version, sourceURL)
 		if err != nil {
+			stage.fail("Fetch failed")
 			return err
 		}
+		stage.success("Source archive ready")
 	} else {
-		fmt.Printf("using local source archive %s\n", archivePath)
+		ui.info("Using local source archive", archivePath)
 	}
 
-	return installFromSource(version, archivePath, destRoot, opts.Jobs, managedMetadata{
+	return installFromSource(ui, version, archivePath, destRoot, opts.Jobs, managedMetadata{
 		Version:     version,
 		Method:      "source-build",
 		SourceURL:   sourceURL,
@@ -143,7 +153,6 @@ func downloadSource(version, url string) (string, error) {
 
 	dest := filepath.Join(root, "Python-"+version+".tgz")
 	if _, err := os.Stat(dest); err == nil {
-		fmt.Printf("using cached source archive %s\n", dest)
 		return dest, nil
 	} else if !os.IsNotExist(err) {
 		return "", err
@@ -189,7 +198,7 @@ func downloadSource(version, url string) (string, error) {
 	return dest, nil
 }
 
-func installFromSource(version, archivePath, destRoot string, jobs int, metadata managedMetadata) error {
+func installFromSource(ui installUI, version, archivePath, destRoot string, jobs int, metadata managedMetadata) error {
 	stageRoot := destRoot + ".tmp"
 	_ = os.RemoveAll(stageRoot)
 	if err := os.MkdirAll(stageRoot, 0o755); err != nil {
@@ -209,27 +218,39 @@ func installFromSource(version, archivePath, destRoot string, jobs int, metadata
 		}
 	}()
 
-	fmt.Printf("extracting %s\n", archivePath)
+	stage := ui.startStage("Extracting source archive")
+	stage.updateDetail(archivePath)
 	srcRoot, err := extractSourceTarGz(archivePath, stageRoot)
 	if err != nil {
+		stage.fail("Extraction failed")
 		return err
 	}
+	stage.success("Source extracted")
 
-	fmt.Printf("configuring build in %s\n", srcRoot)
+	stage = ui.startStage("Configuring build")
+	stage.updateDetail(srcRoot)
 	if err := runBuildStep(srcRoot, filepath.Join(logDir, "configure.log"), "./configure", "--prefix="+destRoot, "--with-ensurepip=install"); err != nil {
+		stage.fail("Configure failed")
 		return wrapBuildError("configure", err, filepath.Join(logDir, "configure.log"))
 	}
+	stage.success("Configure complete")
 
 	makeJobs := defaultMakeJobs(jobs)
-	fmt.Printf("compiling with %d job(s)\n", makeJobs)
+	stage = ui.startStage("Compiling Python")
+	stage.updateDetail(fmt.Sprintf("%d parallel job(s)", makeJobs))
 	if err := runBuildStep(srcRoot, filepath.Join(logDir, "make.log"), "make", "-j", strconv.Itoa(makeJobs)); err != nil {
+		stage.fail("Compilation failed")
 		return wrapBuildError("make", err, filepath.Join(logDir, "make.log"))
 	}
+	stage.success("Compilation complete")
 
-	fmt.Printf("installing into %s\n", destRoot)
+	stage = ui.startStage("Installing runtime")
+	stage.updateDetail(destRoot)
 	if err := runBuildStep(srcRoot, filepath.Join(logDir, "make-install.log"), "make", "install"); err != nil {
+		stage.fail("Install failed")
 		return wrapBuildError("make install", err, filepath.Join(logDir, "make-install.log"))
 	}
+	stage.success("Runtime installed")
 
 	if _, err := os.Stat(filepath.Join(destRoot, "bin", "python3")); err != nil {
 		return fmt.Errorf("install completed without %s: %w", filepath.Join(destRoot, "bin", "python3"), err)
@@ -240,7 +261,7 @@ func installFromSource(version, archivePath, destRoot string, jobs int, metadata
 	}
 
 	success = true
-	fmt.Println(filepath.Join(destRoot, "bin", "python3"))
+	ui.success("Managed interpreter ready", filepath.Join(destRoot, "bin", "python3"))
 	return nil
 }
 
@@ -305,6 +326,74 @@ func readLogTail(path string, lines int) string {
 		chunks = chunks[len(chunks)-lines:]
 	}
 	return strings.Join(chunks, "\n")
+}
+
+func (installUI) header(version string) {
+	pterm.DefaultSection.Println("rpy py install " + version)
+}
+
+func (installUI) info(label, detail string) {
+	pterm.Println(styleMuted("  "+label+": ") + detail)
+}
+
+func (installUI) success(label, detail string) {
+	pterm.Println(styleOK("  OK  ") + label + ": " + detail)
+}
+
+func (installUI) startStage(title string) installStage {
+	spinner, err := pterm.DefaultSpinner.WithRemoveWhenDone(true).Start(title)
+	if err != nil {
+		pterm.Printf("  -> %s\n", title)
+		return installStage{title: title}
+	}
+
+	return installStage{title: title, spinner: spinner}
+}
+
+type installStage struct {
+	title   string
+	spinner *pterm.SpinnerPrinter
+}
+
+func (s installStage) updateDetail(detail string) {
+	if strings.TrimSpace(detail) == "" {
+		return
+	}
+	if s.spinner != nil {
+		s.spinner.UpdateText(fmt.Sprintf("%s: %s", s.title, detail))
+		return
+	}
+	pterm.Println(styleMuted("     "+s.title+": ") + detail)
+}
+
+func (s installStage) success(message string) {
+	if s.spinner != nil {
+		s.spinner.Stop()
+		pterm.Println(styleOK("  OK  ") + message)
+		return
+	}
+	pterm.Println(styleOK("  OK  ") + message)
+}
+
+func (s installStage) fail(message string) {
+	if s.spinner != nil {
+		s.spinner.Fail()
+		pterm.Println(styleFail("  !!  ") + message)
+		return
+	}
+	pterm.Println(styleFail("  !!  ") + message)
+}
+
+func styleMuted(text string) string {
+	return pterm.FgGray.Sprint(text)
+}
+
+func styleOK(text string) string {
+	return pterm.FgLightGreen.Sprint(text)
+}
+
+func styleFail(text string) string {
+	return pterm.FgRed.Sprint(text)
 }
 
 func extractSourceTarGz(archivePath, dest string) (string, error) {
