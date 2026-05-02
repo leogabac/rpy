@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/pterm/pterm"
 )
 
 type Interpreter struct {
@@ -24,9 +26,13 @@ func PrintDiscovered() error {
 		return err
 	}
 
-	for _, item := range interpreters {
-		fmt.Printf("%s\t%s\t%s\n", item.Name, item.Source, item.Path)
+	if len(interpreters) == 0 {
+		pterm.Warning.Println("No Python interpreters found")
+		return nil
 	}
+
+	printInterpreterGroup("Managed", filterInterpreters(interpreters, "managed"))
+	printInterpreterGroup("PATH", filterInterpreters(interpreters, "PATH"))
 
 	return nil
 }
@@ -69,7 +75,8 @@ func Resolve(query string) (Interpreter, error) {
 	}
 
 	if path, err := exec.LookPath(query); err == nil {
-		return Interpreter{Name: filepath.Base(path), Path: normalizeInterpreterPath(path), Source: "PATH"}, nil
+		canonical := normalizeInterpreterPath(path)
+		return Interpreter{Name: displayInterpreterName(filepath.Base(path), canonical), Path: canonical, Source: "PATH"}, nil
 	}
 
 	for _, item := range items {
@@ -84,9 +91,10 @@ func Resolve(query string) (Interpreter, error) {
 func ResolveDefault() (Interpreter, error) {
 	for _, name := range []string{"python", "python3"} {
 		if path, err := exec.LookPath(name); err == nil {
+			canonical := normalizeInterpreterPath(path)
 			return Interpreter{
-				Name:   filepath.Base(path),
-				Path:   path,
+				Name:   displayInterpreterName(filepath.Base(path), canonical),
+				Path:   canonical,
 				Source: "PATH",
 			}, nil
 		}
@@ -200,7 +208,7 @@ func discoverPath() []Interpreter {
 
 			seen[canonical] = true
 			items = append(items, Interpreter{
-				Name:   base,
+				Name:   displayInterpreterName(base, canonical),
 				Path:   canonical,
 				Source: "PATH",
 			})
@@ -326,4 +334,59 @@ func normalizeInterpreterPath(path string) string {
 		return path
 	}
 	return resolved
+}
+
+func displayInterpreterName(name, canonicalPath string) string {
+	canonicalBase := filepath.Base(canonicalPath)
+	if canonicalBase == "" {
+		return name
+	}
+	if name == "python" || name == "python3" {
+		if pythonNamePattern.MatchString(canonicalBase) {
+			return canonicalBase
+		}
+	}
+	return name
+}
+
+func filterInterpreters(items []Interpreter, source string) []Interpreter {
+	out := make([]Interpreter, 0, len(items))
+	for _, item := range items {
+		if item.Source == source {
+			out = append(out, item)
+		}
+	}
+	return out
+}
+
+func printInterpreterGroup(title string, items []Interpreter) {
+	if len(items) == 0 {
+		return
+	}
+
+	pterm.Println(pterm.FgGray.Sprint(strings.ToLower(title)))
+	for _, item := range items {
+		pterm.Println(
+			pterm.FgLightGreen.Sprint("  "+item.Name) +
+				pterm.FgGray.Sprint("  "+shortenPath(item.Path)),
+		)
+	}
+}
+
+func shortenPath(path string) string {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return path
+	}
+
+	if path == home {
+		return "~"
+	}
+
+	prefix := home + string(filepath.Separator)
+	if strings.HasPrefix(path, prefix) {
+		return "~" + string(filepath.Separator) + strings.TrimPrefix(path, prefix)
+	}
+
+	return path
 }

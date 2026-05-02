@@ -4,8 +4,13 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 
 	"rpy/internal/python"
+
+	"github.com/pterm/pterm"
+	"golang.org/x/term"
 )
 
 // CreateProjectVenv creates a local .venv directory in the current working directory.
@@ -22,38 +27,84 @@ func CreateProjectVenv(python string) error {
 		return err
 	}
 
-	pythonBin, err := findPython(python)
+	interpreter, err := resolvePython(python)
 	if err != nil {
 		return err
 	}
 
-	cmd := exec.Command(pythonBin, "-m", "venv", info.Root)
+	pterm.Println(pterm.FgGray.Sprint("create .venv"))
+	pterm.Println(
+		pterm.FgGray.Sprint("  python: ") +
+			pterm.FgLightGreen.Sprint(interpreter.Name) +
+			pterm.FgGray.Sprint("  "+shortenPath(interpreter.Path)),
+	)
+
+	stage := (*pterm.SpinnerPrinter)(nil)
+	if term.IsTerminal(int(os.Stdout.Fd())) {
+		var spinnerErr error
+		stage, spinnerErr = pterm.DefaultSpinner.WithRemoveWhenDone(true).Start("Creating virtual environment")
+		if spinnerErr != nil {
+			stage = nil
+		}
+	}
+	if stage == nil {
+		stage = nil
+		pterm.Println(pterm.FgGray.Sprint("  creating: ") + info.Root)
+	}
+
+	cmd := exec.Command(interpreter.Path, "-m", "venv", info.Root)
 
 	out, err := cmd.CombinedOutput()
-	if len(out) > 0 {
-		fmt.Print(string(out))
-	}
 	if err != nil {
-		return fmt.Errorf("failed to create virtual environment: %w", err)
+		if stage != nil {
+			stage.Fail()
+		}
+		message := fmt.Sprintf("failed to create virtual environment: %v", err)
+		output := strings.TrimSpace(string(out))
+		if output != "" {
+			return fmt.Errorf("%s\n%s", message, output)
+		}
+		return fmt.Errorf("%s", message)
 	}
 
-	fmt.Println(info.Root)
+	if stage != nil {
+		stage.Stop()
+	}
+	pterm.Println(pterm.FgLightGreen.Sprint("  OK  ") + shortenPath(info.Root))
 	return nil
 }
 
-func findPython(requested string) (string, error) {
+func resolvePython(requested string) (python.Interpreter, error) {
 	if requested != "" {
 		interpreter, err := python.Resolve(requested)
 		if err != nil {
-			return "", fmt.Errorf("could not resolve requested python interpreter %q: %w", requested, err)
+			return python.Interpreter{}, fmt.Errorf("could not resolve requested python interpreter %q: %w", requested, err)
 		}
-		return interpreter.Path, nil
+		return interpreter, nil
 	}
 
 	interpreter, err := python.ResolveDefault()
 	if err != nil {
-		return "", err
+		return python.Interpreter{}, err
 	}
 
-	return interpreter.Path, nil
+	return interpreter, nil
+}
+
+func shortenPath(path string) string {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return path
+	}
+
+	if path == home {
+		return "~"
+	}
+
+	prefix := home + string(filepath.Separator)
+	if strings.HasPrefix(path, prefix) {
+		return "~" + string(filepath.Separator) + strings.TrimPrefix(path, prefix)
+	}
+
+	return path
 }

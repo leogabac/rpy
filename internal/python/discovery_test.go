@@ -125,3 +125,20 @@ func TestCompareVersionish(t *testing.T) {
 		t.Fatal("unreachable")
 	}
 }
+
+func TestDisplayInterpreterNamePrefersResolvedVersionedName(t *testing.T) {
+	got := displayInterpreterName("python", "/usr/bin/python3.14")
+	if got != "python3.14" {
+		t.Fatalf("displayInterpreterName() = %q, want %q", got, "python3.14")
+	}
+
+	got = displayInterpreterName("python3", "/usr/bin/python3.12")
+	if got != "python3.12" {
+		t.Fatalf("displayInterpreterName() = %q, want %q", got, "python3.12")
+	}
+
+	got = displayInterpreterName("python3.11", "/usr/bin/python3.11")
+	if got != "python3.11" {
+		t.Fatalf("displayInterpreterName() = %q, want %q", got, "python3.11")
+	}
+}
