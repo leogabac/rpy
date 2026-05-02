@@ -7,10 +7,13 @@ import (
 )
 
 var envUseCmd = &cobra.Command{
-	Use:   "use <name>",
-	Short: "Select a shared environment for the current project",
+	Use:   "use <name|local>",
+	Short: "Select the environment for the current project",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if args[0] == "local" {
+			return env.UseLocalEnv()
+		}
 		return env.UseSharedEnv(args[0])
 	},
 }

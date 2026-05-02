@@ -26,6 +26,9 @@ The project is deliberately Linux-first. Managed Python installs are built from 
 The current CLI is intentionally narrow:
 
 - `rpy env create`
+- `rpy env create glass --use`
+- `rpy env use local`
+- `rpy env list`
 - `rpy env path`
 - `rpy env info`
 - `rpy env activate`
@@ -73,3 +76,35 @@ That integration does two things:
 
 - makes `rpy env activate` work in the current shell
 - auto-activates `.venv` when you enter a project directory
+
+## Environment Model
+
+Each project uses exactly one environment at a time:
+
+- `local`: `./.venv`
+- `shared:<name>`: `~/.rpy/envs/<name>`
+
+Create a local env:
+
+```sh
+rpy env create
+```
+
+Create and select a shared env:
+
+```sh
+rpy env create glass --python 3.12.0 --use
+```
+
+Switch back to the local env:
+
+```sh
+rpy env use local
+```
+
+See what the project can use and what is currently selected:
+
+```sh
+rpy env list
+rpy env info
+```

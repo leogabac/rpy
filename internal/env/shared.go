@@ -79,7 +79,6 @@ func PrintEnvs() error {
 		currentKind = "shared"
 	}
 
-	pterm.Println(pterm.FgGray.Sprint("local"))
 	projectPrefix := "  "
 	if currentKind == "project" {
 		projectPrefix = "* "
@@ -89,23 +88,18 @@ func PrintEnvs() error {
 		projectStatus = pterm.FgGray.Sprint(" (missing)")
 	}
 	pterm.Println(
-		pterm.FgLightGreen.Sprint(projectPrefix+project.Name) +
+		pterm.FgLightGreen.Sprint(projectPrefix+"local") +
 			pterm.FgGray.Sprint("  "+shortenPath(project.Root)) +
 			projectStatus,
 	)
 
-	if len(items) == 0 {
-		return nil
-	}
-
-	pterm.Println(pterm.FgGray.Sprint("shared"))
 	for _, item := range items {
 		prefix := "  "
 		if item.Name == selected {
 			prefix = "* "
 		}
 		pterm.Println(
-			pterm.FgLightGreen.Sprint(prefix+item.Name) +
+			pterm.FgLightGreen.Sprint(prefix+"shared:"+item.Name) +
 				pterm.FgGray.Sprint("  "+shortenPath(item.Root)),
 		)
 	}
@@ -129,6 +123,20 @@ func UseSharedEnv(name string) error {
 
 	path := filepath.Join(cwd, projectSelectionFile)
 	return os.WriteFile(path, []byte(info.Name+"\n"), 0o644)
+}
+
+func UseLocalEnv() error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	path := filepath.Join(cwd, projectSelectionFile)
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	return nil
 }
 
 func RemoveSharedEnv(name string) error {

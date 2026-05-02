@@ -8,7 +8,7 @@ import (
 
 var envListCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List local and shared environments",
+	Short: "List the local and shared environments available to this project",
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return env.PrintEnvs()
