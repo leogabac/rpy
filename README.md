@@ -102,6 +102,13 @@ Switch back to the local env:
 rpy env use local
 ```
 
+Switch and activate in one step:
+
+```sh
+rpy env use glass --activate
+rpy env use local --activate
+```
+
 See what the project can use and what is currently selected:
 
 ```sh

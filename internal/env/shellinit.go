@@ -42,6 +42,30 @@ func bashShellInit() string {
 	return strings.TrimSpace(`
 # rpy shell integration
 rpy() {
+  if [ "$#" -ge 3 ] && [ "$1" = "env" ] && [ "$2" = "use" ]; then
+    local _rpy_use_activate=""
+    local _rpy_use_args=()
+    local arg
+    for arg in "${@:3}"; do
+      if [ "$arg" = "--activate" ]; then
+        _rpy_use_activate=1
+        continue
+      fi
+      _rpy_use_args+=("$arg")
+    done
+    if [ -n "$_rpy_use_activate" ]; then
+      command rpy env use "${_rpy_use_args[@]}" || return $?
+      local _rpy_activate_path
+      _rpy_activate_path="$(command rpy env activate --shell bash --path)" || return $?
+      if [ -n "${VIRTUAL_ENV:-}" ] && [ "${VIRTUAL_ENV}" != "$(dirname "$(dirname "$_rpy_activate_path")")" ]; then
+        deactivate >/dev/null 2>&1 || true
+      fi
+      . "$_rpy_activate_path"
+      export RPY_AUTO_VENV="$(dirname "$(dirname "$_rpy_activate_path")")"
+      return $?
+    fi
+  fi
+
   if [ "$#" -ge 2 ] && [ "$1" = "env" ] && [ "$2" = "activate" ]; then
     shift 2
     local _rpy_activate_path
@@ -84,6 +108,31 @@ func fishShellInit() string {
 	return strings.TrimSpace(`
 # rpy shell integration
 function rpy
+    if test (count $argv) -ge 3; and test "$argv[1]" = "env"; and test "$argv[2]" = "use"
+        set -l use_activate 0
+        set -l passthrough
+        for arg in $argv[3..-1]
+            if test "$arg" = "--activate"
+                set use_activate 1
+                continue
+            end
+            set passthrough $passthrough $arg
+        end
+        if test $use_activate -eq 1
+            command rpy env use $passthrough
+            or return $status
+            set -l activate_path (command rpy env activate --shell fish --path)
+            or return $status
+            set -l activate_root (dirname (dirname "$activate_path"))
+            if set -q VIRTUAL_ENV; and test "$VIRTUAL_ENV" != "$activate_root"
+                deactivate >/dev/null 2>/dev/null
+            end
+            source "$activate_path"
+            set -gx RPY_AUTO_VENV "$activate_root"
+            return $status
+        end
+    end
+
     if test (count $argv) -ge 2; and test "$argv[1]" = "env"; and test "$argv[2]" = "activate"
         set -l passthrough $argv[3..-1]
         set -l activate_path (command rpy env activate --shell fish --path $passthrough)
@@ -122,6 +171,30 @@ func zshShellInit() string {
 	return strings.TrimSpace(`
 # rpy shell integration
 function rpy() {
+  if [ "$#" -ge 3 ] && [ "$1" = "env" ] && [ "$2" = "use" ]; then
+    local _rpy_use_activate=""
+    local _rpy_use_args=()
+    local arg
+    for arg in "${@:3}"; do
+      if [ "$arg" = "--activate" ]; then
+        _rpy_use_activate=1
+        continue
+      fi
+      _rpy_use_args+=("$arg")
+    done
+    if [ -n "$_rpy_use_activate" ]; then
+      command rpy env use "${_rpy_use_args[@]}" || return $?
+      local _rpy_activate_path
+      _rpy_activate_path="$(command rpy env activate --shell zsh --path)" || return $?
+      if [ -n "${VIRTUAL_ENV:-}" ] && [ "${VIRTUAL_ENV}" != "$(dirname "$(dirname "$_rpy_activate_path")")" ]; then
+        deactivate >/dev/null 2>&1 || true
+      fi
+      . "$_rpy_activate_path"
+      export RPY_AUTO_VENV="$(dirname "$(dirname "$_rpy_activate_path")")"
+      return $?
+    fi
+  fi
+
   if [ "$#" -ge 2 ] && [ "$1" = "env" ] && [ "$2" = "activate" ]; then
     shift 2
     local _rpy_activate_path

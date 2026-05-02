@@ -84,6 +84,25 @@ func TestUseSharedEnvWritesProjectSelection(t *testing.T) {
 	}
 }
 
+func TestUseLocalEnvRemovesProjectSelection(t *testing.T) {
+	project := t.TempDir()
+
+	restore := chdirForTest(t, project)
+	defer restore()
+
+	if err := os.WriteFile(filepath.Join(project, projectSelectionFile), []byte("glass\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := UseLocalEnv(); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := os.Stat(filepath.Join(project, projectSelectionFile)); !os.IsNotExist(err) {
+		t.Fatalf("expected %s to be removed, got %v", projectSelectionFile, err)
+	}
+}
+
 func chdirForTest(t *testing.T, dir string) func() {
 	t.Helper()
 
