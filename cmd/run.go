@@ -12,7 +12,7 @@ import (
 // runCmd represents the run command
 var runCmd = &cobra.Command{
 	Use:                "run <command> [args...]",
-	Short:              "Run a command inside the project-local .venv",
+	Short:              "Run a command inside the current environment",
 	Long:               `Run a command with the environment's bin directory prepended to PATH.`,
 	DisableFlagParsing: true,
 	RunE: func(cmd *cobra.Command, args []string) error {

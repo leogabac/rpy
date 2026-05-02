@@ -12,8 +12,8 @@ import (
 // pathCmd represents the path command
 var pathCmd = &cobra.Command{
 	Use:   "path",
-	Short: "Print the project-local .venv path",
-	Long:  `Print the absolute path to the .venv for the current project directory.`,
+	Short: "Print the current environment path",
+	Long:  `Print the absolute path to the environment currently selected for this project.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return env.ResolveEnvPath()
 	},

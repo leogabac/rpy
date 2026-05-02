@@ -9,7 +9,7 @@ import (
 )
 
 func PrintActivateCommand(shell string) error {
-	info, err := requireProjectEnv()
+	info, err := requireCurrentEnv()
 	if err != nil {
 		return err
 	}
@@ -24,7 +24,7 @@ func PrintActivateCommand(shell string) error {
 }
 
 func PrintActivationPath(shell string) error {
-	info, err := requireProjectEnv()
+	info, err := requireCurrentEnv()
 	if err != nil {
 		return err
 	}

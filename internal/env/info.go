@@ -8,6 +8,8 @@ import (
 )
 
 type Info struct {
+	Name     string
+	Kind     string
 	Root     string
 	BinDir   string
 	Python   string
@@ -23,6 +25,8 @@ func ProjectEnvInfo() (Info, error) {
 	}
 
 	info := Info{
+		Name:   ".venv",
+		Kind:   "project",
 		Root:   root,
 		BinDir: scriptsDir(root),
 	}
@@ -42,12 +46,54 @@ func ProjectEnvInfo() (Info, error) {
 	return Info{}, fmt.Errorf("stat %s: %w", root, err)
 }
 
-func PrintProjectEnvInfo() error {
-	info, err := ProjectEnvInfo()
+func CurrentEnvInfo() (Info, error) {
+	name, err := currentSharedEnvName()
+	if err != nil {
+		return Info{}, err
+	}
+	if name != "" {
+		return SharedEnvInfo(name)
+	}
+
+	return ProjectEnvInfo()
+}
+
+func SharedEnvInfo(name string) (Info, error) {
+	root, err := SharedEnvPath(name)
+	if err != nil {
+		return Info{}, err
+	}
+
+	info := Info{
+		Name:   name,
+		Kind:   "shared",
+		Root:   root,
+		BinDir: scriptsDir(root),
+	}
+	info.Python = filepath.Join(info.BinDir, pythonExecutableName())
+	info.Pip = filepath.Join(info.BinDir, pipExecutableName())
+	info.Activate = defaultActivationScriptPath(info)
+
+	stat, err := os.Stat(root)
+	if err == nil {
+		info.Exists = stat.IsDir()
+		return info, nil
+	}
+	if os.IsNotExist(err) {
+		return info, nil
+	}
+
+	return Info{}, fmt.Errorf("stat %s: %w", root, err)
+}
+
+func PrintCurrentEnvInfo() error {
+	info, err := CurrentEnvInfo()
 	if err != nil {
 		return err
 	}
 
+	fmt.Printf("kind: %s\n", info.Kind)
+	fmt.Printf("name: %s\n", info.Name)
 	fmt.Printf("root: %s\n", info.Root)
 	fmt.Printf("exists: %t\n", info.Exists)
 	fmt.Printf("bin: %s\n", info.BinDir)

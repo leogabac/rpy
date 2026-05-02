@@ -12,10 +12,10 @@ import (
 // infoCmd represents the info command
 var infoCmd = &cobra.Command{
 	Use:   "info",
-	Short: "Print metadata about the project-local .venv",
-	Long:  `Report whether the .venv exists and show the key paths rpy will use.`,
+	Short: "Print metadata about the current environment",
+	Long:  `Report whether the currently selected environment exists and show the key paths rpy will use.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return env.PrintProjectEnvInfo()
+		return env.PrintCurrentEnvInfo()
 	},
 }
 

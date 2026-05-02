@@ -9,7 +9,7 @@ import (
 )
 
 func RunInProjectEnv(args []string) error {
-	info, err := requireProjectEnv()
+	info, err := requireCurrentEnv()
 	if err != nil {
 		return err
 	}
@@ -29,7 +29,7 @@ func RunInProjectEnv(args []string) error {
 }
 
 func RunPipInProjectEnv(args []string) error {
-	info, err := requireProjectEnv()
+	info, err := requireCurrentEnv()
 	if err != nil {
 		return err
 	}
@@ -43,19 +43,22 @@ func RunPipInProjectEnv(args []string) error {
 	return cmd.Run()
 }
 
-func requireProjectEnv() (Info, error) {
-	info, err := ProjectEnvInfo()
+func requireCurrentEnv() (Info, error) {
+	info, err := CurrentEnvInfo()
 	if err != nil {
 		return Info{}, err
 	}
 
 	if !info.Exists {
-		return Info{}, fmt.Errorf("no project environment found at %s; run `rpy env create` first", info.Root)
+		if info.Kind == "shared" {
+			return Info{}, fmt.Errorf("shared environment %q was selected but not found at %s", info.Name, info.Root)
+		}
+		return Info{}, fmt.Errorf("no environment found at %s; run `rpy env create` first", info.Root)
 	}
 
 	if _, err := os.Stat(info.Python); err != nil {
 		if os.IsNotExist(err) {
-			return Info{}, fmt.Errorf("project environment exists but %s is missing", info.Python)
+			return Info{}, fmt.Errorf("%s environment exists but %s is missing", info.Kind, info.Python)
 		}
 
 		return Info{}, err

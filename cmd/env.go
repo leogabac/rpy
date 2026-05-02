@@ -8,8 +8,8 @@ import "github.com/spf13/cobra"
 // envCmd represents the env command
 var envCmd = &cobra.Command{
 	Use:   "env",
-	Short: "Manage the project-local virtual environment",
-	Long:  `Manage the .venv associated with the current project directory.`,
+	Short: "Manage local and shared virtual environments",
+	Long:  `Manage the project's local .venv and any shared named environments under ~/.rpy/envs.`,
 }
 
 func init() {

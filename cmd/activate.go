@@ -11,8 +11,8 @@ var activatePathOnly bool
 
 var activateCmd = &cobra.Command{
 	Use:   "activate",
-	Short: "Print the shell command needed to activate the project-local .venv",
-	Long: `Print the activation snippet for the current project's .venv.
+	Short: "Print the shell command needed to activate the current environment",
+	Long: `Print the activation snippet for the current environment.
 
 Because a child process cannot modify the parent shell environment, this
 command prints the shell command you should evaluate, for example:

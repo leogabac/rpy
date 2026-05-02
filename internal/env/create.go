@@ -14,12 +14,43 @@ import (
 )
 
 // CreateProjectVenv creates a local .venv directory in the current working directory.
-func CreateProjectVenv(python string) error {
+func CreateProjectVenv(requestedPython string) error {
 	info, err := ProjectEnvInfo()
 	if err != nil {
 		return err
 	}
 
+	interpreter, err := resolvePython(requestedPython)
+	if err != nil {
+		return err
+	}
+
+	return createEnvAt(info, interpreter)
+}
+
+func CreateSharedVenv(name, requestedPython string, useNow bool) error {
+	info, err := SharedEnvInfo(name)
+	if err != nil {
+		return err
+	}
+
+	interpreter, err := resolvePython(requestedPython)
+	if err != nil {
+		return err
+	}
+
+	if err := createEnvAt(info, interpreter); err != nil {
+		return err
+	}
+
+	if useNow {
+		return UseSharedEnv(name)
+	}
+
+	return nil
+}
+
+func createEnvAt(info Info, interpreter python.Interpreter) error {
 	if info.Exists {
 		return fmt.Errorf("%s already exists", info.Root)
 	}
@@ -27,16 +58,15 @@ func CreateProjectVenv(python string) error {
 		return err
 	}
 
-	interpreter, err := resolvePython(python)
-	if err != nil {
-		return err
-	}
-
-	pterm.Println(pterm.FgGray.Sprint("create .venv"))
+	pterm.Println(pterm.FgGray.Sprint("create " + info.Name))
 	pterm.Println(
 		pterm.FgGray.Sprint("  python: ") +
 			pterm.FgLightGreen.Sprint(interpreter.Name) +
 			pterm.FgGray.Sprint("  "+shortenPath(interpreter.Path)),
+	)
+	pterm.Println(
+		pterm.FgGray.Sprint("  target: ") +
+			pterm.FgGray.Sprint(shortenPath(info.Root)),
 	)
 
 	stage := (*pterm.SpinnerPrinter)(nil)
@@ -48,7 +78,6 @@ func CreateProjectVenv(python string) error {
 		}
 	}
 	if stage == nil {
-		stage = nil
 		pterm.Println(pterm.FgGray.Sprint("  creating: ") + info.Root)
 	}
 

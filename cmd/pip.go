@@ -12,8 +12,8 @@ import (
 // pipCmd represents the pip command
 var pipCmd = &cobra.Command{
 	Use:                "pip <pip-args...>",
-	Short:              "Run pip through the project-local environment interpreter",
-	Long:               `Invoke python -m pip using the interpreter from the current project's .venv.`,
+	Short:              "Run pip through the current environment interpreter",
+	Long:               `Invoke python -m pip using the interpreter from the environment currently selected for this project.`,
 	DisableFlagParsing: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) == 0 {

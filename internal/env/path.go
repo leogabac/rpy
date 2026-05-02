@@ -16,13 +16,13 @@ func ProjectVenvPath() (string, error) {
 	return filepath.Join(cwd, ".venv"), nil
 }
 
-// ResolveEnvPath prints the path to the project-local virtual environment.
+// ResolveEnvPath prints the path to the currently selected environment.
 func ResolveEnvPath() error {
-	envPath, err := ProjectVenvPath()
+	info, err := CurrentEnvInfo()
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(envPath)
+	fmt.Println(info.Root)
 	return nil
 }
