@@ -103,6 +103,26 @@ func TestUseLocalEnvRemovesProjectSelection(t *testing.T) {
 	}
 }
 
+func TestRemoveLocalEnvRemovesProjectVenv(t *testing.T) {
+	project := t.TempDir()
+
+	restore := chdirForTest(t, project)
+	defer restore()
+
+	root := filepath.Join(project, ".venv")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := RemoveLocalEnv(); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := os.Stat(root); !os.IsNotExist(err) {
+		t.Fatalf("expected .venv to be removed, got %v", err)
+	}
+}
+
 func chdirForTest(t *testing.T, dir string) func() {
 	t.Helper()
 

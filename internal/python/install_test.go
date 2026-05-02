@@ -69,6 +69,24 @@ func TestReadLogTail(t *testing.T) {
 	}
 }
 
+func TestRemoveManagedRuntime(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	root := filepath.Join(home, ".rpy", "pythons", "3.12.3")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := Remove("3.12.3"); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := os.Stat(root); !os.IsNotExist(err) {
+		t.Fatalf("expected managed runtime to be removed, got %v", err)
+	}
+}
+
 func writeTestArchive(path string) error {
 	f, err := os.Create(path)
 	if err != nil {

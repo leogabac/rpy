@@ -7,8 +7,8 @@ import (
 )
 
 var envRemoveCmd = &cobra.Command{
-	Use:   "remove <name>",
-	Short: "Remove a shared environment",
+	Use:   "remove <name|local>",
+	Short: "Remove a shared environment or the local .venv",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return env.RemoveSharedEnv(args[0])

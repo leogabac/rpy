@@ -14,12 +14,15 @@ import (
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "rpy",
-	Short: "Manage a project-local Python virtual environment",
-	Long: `rpy is a small Python workflow wrapper focused on project-local virtual
-environments.
+	Short: "Manage Python runtimes and local or shared virtual environments",
+	Long: `rpy is a small Python workflow wrapper for Linux-first development.
 
-The current MVP manages a .venv in the current directory and lets you create
-it, inspect it, run commands inside it, and invoke pip through it.`,
+It manages:
+- Python runtimes under ~/.rpy/pythons
+- a local project environment at ./.venv
+- shared named environments under ~/.rpy/envs
+
+Each project uses either its local environment or one selected shared environment.`,
 	SilenceUsage: true,
 }
 

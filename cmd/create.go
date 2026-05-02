@@ -11,6 +11,7 @@ import (
 
 var createPython string
 var createUse bool
+var createForce bool
 
 // createCmd represents the create command
 var createCmd = &cobra.Command{
@@ -20,9 +21,9 @@ var createCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		switch len(args) {
 		case 0:
-			return env.CreateProjectVenv(createPython)
+			return env.CreateProjectVenv(createPython, createForce)
 		case 1:
-			return env.CreateSharedVenv(args[0], createPython, createUse)
+			return env.CreateSharedVenv(args[0], createPython, createUse, createForce)
 		default:
 			return cobra.MaximumNArgs(1)(cmd, args)
 		}
@@ -33,5 +34,6 @@ func init() {
 	envCmd.AddCommand(createCmd)
 	createCmd.Flags().StringVar(&createPython, "python", "", "Python interpreter to use")
 	createCmd.Flags().BoolVar(&createUse, "use", false, "When creating a shared environment, select it for the current project")
+	createCmd.Flags().BoolVar(&createForce, "force", false, "Replace an existing environment before creating it")
 	createCmd.Flags().SetInterspersed(true)
 }

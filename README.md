@@ -27,12 +27,14 @@ The current CLI is intentionally narrow:
 
 - `rpy env create`
 - `rpy env create glass --use`
+- `rpy env remove local`
 - `rpy env use local`
 - `rpy env list`
 - `rpy env path`
 - `rpy env info`
 - `rpy env activate`
 - `rpy py install 3.12.3`
+- `rpy py remove 3.12.3`
 - `rpy py list`
 - `rpy py which 3.12`
 - `rpy run ...`
@@ -75,7 +77,7 @@ rpy shell-init --shell fish | source
 That integration does two things:
 
 - makes `rpy env activate` work in the current shell
-- auto-activates `.venv` when you enter a project directory
+- auto-activates the environment selected for the current project when you enter a project directory
 
 ## Environment Model
 
@@ -88,12 +90,14 @@ Create a local env:
 
 ```sh
 rpy env create
+rpy env create --force
 ```
 
 Create and select a shared env:
 
 ```sh
 rpy env create glass --python 3.12.0 --use
+rpy env create glass --python 3.12.0 --force
 ```
 
 Switch back to the local env:
@@ -107,6 +111,13 @@ Switch and activate in one step:
 ```sh
 rpy env use glass --activate
 rpy env use local --activate
+```
+
+Remove environments:
+
+```sh
+rpy env remove local
+rpy env remove glass
 ```
 
 See what the project can use and what is currently selected:

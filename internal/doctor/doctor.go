@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"rpy/internal/env"
 )
 
 type Checker struct {
@@ -38,7 +40,7 @@ func (c *Checker) Check() ([]Result, error) {
 	// then here we make an implementation for the Checker struct
 
 	// first make an empty slice with capacity for three objects
-	results := make([]Result, 0, 3)
+	results := make([]Result, 0, 8)
 
 	// append the home directory that we already have
 	results = append(results, Result{
@@ -75,5 +77,71 @@ func (c *Checker) Check() ([]Result, error) {
 		Detail: pythonPath,
 	})
 
+	results = append(results, Result{
+		Name:   "shell integration",
+		OK:     os.Getenv("RPY_SHELL_INIT") == "1",
+		Detail: shellInitDetail(),
+	})
+
+	results = append(results, checkCurrentEnvSelection())
+
+	for _, tool := range []string{"make", "cc"} {
+		results = append(results, checkTool(tool))
+	}
+
 	return results, nil
+}
+
+func shellInitDetail() string {
+	if os.Getenv("RPY_SHELL_INIT") == "1" {
+		return "loaded in current shell session"
+	}
+
+	return "not detected in current shell session"
+}
+
+func checkCurrentEnvSelection() Result {
+	info, err := env.CurrentEnvInfo()
+	if err != nil {
+		return Result{
+			Name:   "current environment",
+			OK:     false,
+			Detail: err.Error(),
+		}
+	}
+
+	label := fmt.Sprintf("%s:%s", info.Kind, info.Name)
+	if info.Kind == "project" {
+		label = "local"
+	}
+	if info.Exists {
+		return Result{
+			Name:   "current environment",
+			OK:     true,
+			Detail: fmt.Sprintf("%s -> %s", label, info.Root),
+		}
+	}
+
+	return Result{
+		Name:   "current environment",
+		OK:     false,
+		Detail: fmt.Sprintf("%s selected but missing at %s", label, info.Root),
+	}
+}
+
+func checkTool(name string) Result {
+	path, err := exec.LookPath(name)
+	if err != nil {
+		return Result{
+			Name:   name + " available",
+			OK:     false,
+			Detail: name + " was not found",
+		}
+	}
+
+	return Result{
+		Name:   name + " available",
+		OK:     true,
+		Detail: path,
+	}
 }

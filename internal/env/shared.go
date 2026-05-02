@@ -140,6 +140,10 @@ func UseLocalEnv() error {
 }
 
 func RemoveSharedEnv(name string) error {
+	if name == "local" {
+		return RemoveLocalEnv()
+	}
+
 	path, err := SharedEnvPath(name)
 	if err != nil {
 		return err
@@ -153,6 +157,22 @@ func RemoveSharedEnv(name string) error {
 	}
 
 	return os.RemoveAll(path)
+}
+
+func RemoveLocalEnv() error {
+	info, err := ProjectEnvInfo()
+	if err != nil {
+		return err
+	}
+
+	if _, err := os.Stat(info.Root); err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("local environment does not exist at %s", info.Root)
+		}
+		return err
+	}
+
+	return os.RemoveAll(info.Root)
 }
 
 func currentSharedEnvName() (string, error) {

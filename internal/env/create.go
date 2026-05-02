@@ -14,7 +14,7 @@ import (
 )
 
 // CreateProjectVenv creates a local .venv directory in the current working directory.
-func CreateProjectVenv(requestedPython string) error {
+func CreateProjectVenv(requestedPython string, force bool) error {
 	info, err := ProjectEnvInfo()
 	if err != nil {
 		return err
@@ -25,10 +25,10 @@ func CreateProjectVenv(requestedPython string) error {
 		return err
 	}
 
-	return createEnvAt(info, interpreter)
+	return createEnvAt(info, interpreter, force)
 }
 
-func CreateSharedVenv(name, requestedPython string, useNow bool) error {
+func CreateSharedVenv(name, requestedPython string, useNow bool, force bool) error {
 	info, err := SharedEnvInfo(name)
 	if err != nil {
 		return err
@@ -39,7 +39,7 @@ func CreateSharedVenv(name, requestedPython string, useNow bool) error {
 		return err
 	}
 
-	if err := createEnvAt(info, interpreter); err != nil {
+	if err := createEnvAt(info, interpreter, force); err != nil {
 		return err
 	}
 
@@ -50,9 +50,14 @@ func CreateSharedVenv(name, requestedPython string, useNow bool) error {
 	return nil
 }
 
-func createEnvAt(info Info, interpreter python.Interpreter) error {
+func createEnvAt(info Info, interpreter python.Interpreter, force bool) error {
 	if info.Exists {
-		return fmt.Errorf("%s already exists", info.Root)
+		if !force {
+			return fmt.Errorf("%s already exists", info.Root)
+		}
+		if err := os.RemoveAll(info.Root); err != nil {
+			return err
+		}
 	}
 	if _, err := os.Stat(info.Root); err != nil && !os.IsNotExist(err) {
 		return err

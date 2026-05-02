@@ -41,6 +41,8 @@ func ShellInitScript(shell string) (string, error) {
 func bashShellInit() string {
 	return strings.TrimSpace(`
 # rpy shell integration
+export RPY_SHELL_INIT=1
+
 rpy() {
   if [ "$#" -ge 3 ] && [ "$1" = "env" ] && [ "$2" = "use" ]; then
     local _rpy_use_activate=""
@@ -82,16 +84,24 @@ rpy() {
 }
 
 _rpy_autoenv() {
-  local current="$PWD/.venv"
+  local _rpy_activate_path=""
+  _rpy_activate_path="$(command rpy env activate --shell bash --path 2>/dev/null || true)"
 
-  if [ -n "${RPY_AUTO_VENV:-}" ] && [ "${VIRTUAL_ENV:-}" = "$RPY_AUTO_VENV" ] && [ "$current" != "$RPY_AUTO_VENV" ]; then
+  if [ -n "${RPY_AUTO_VENV:-}" ] && [ "${VIRTUAL_ENV:-}" = "$RPY_AUTO_VENV" ] && [ -z "$_rpy_activate_path" ]; then
     deactivate >/dev/null 2>&1 || true
     unset RPY_AUTO_VENV
   fi
 
-  if [ -z "${VIRTUAL_ENV:-}" ] && [ -f "$current/bin/activate" ]; then
-    . "$current/bin/activate"
-    export RPY_AUTO_VENV="$current"
+  if [ -n "$_rpy_activate_path" ]; then
+    local _rpy_activate_root
+    _rpy_activate_root="$(dirname "$(dirname "$_rpy_activate_path")")"
+    if [ "${VIRTUAL_ENV:-}" != "$_rpy_activate_root" ]; then
+      if [ -n "${VIRTUAL_ENV:-}" ]; then
+        deactivate >/dev/null 2>&1 || true
+      fi
+      . "$_rpy_activate_path"
+      export RPY_AUTO_VENV="$_rpy_activate_root"
+    fi
   fi
 }
 
@@ -107,6 +117,8 @@ _rpy_autoenv
 func fishShellInit() string {
 	return strings.TrimSpace(`
 # rpy shell integration
+set -gx RPY_SHELL_INIT 1
+
 function rpy
     if test (count $argv) -ge 3; and test "$argv[1]" = "env"; and test "$argv[2]" = "use"
         set -l use_activate 0
@@ -150,16 +162,22 @@ function rpy
 end
 
 function __rpy_autoenv --on-variable PWD
-    set -l current "$PWD/.venv"
+    set -l activate_path (command rpy env activate --shell fish --path 2>/dev/null)
 
-    if set -q RPY_AUTO_VENV; and test "$VIRTUAL_ENV" = "$RPY_AUTO_VENV"; and test "$current" != "$RPY_AUTO_VENV"
+    if set -q RPY_AUTO_VENV; and test "$VIRTUAL_ENV" = "$RPY_AUTO_VENV"; and test -z "$activate_path"
         deactivate >/dev/null 2>/dev/null
         set -e RPY_AUTO_VENV
     end
 
-    if not set -q VIRTUAL_ENV; and test -f "$current/bin/activate.fish"
-        source "$current/bin/activate.fish"
-        set -gx RPY_AUTO_VENV "$current"
+    if test -n "$activate_path"
+        set -l activate_root (dirname (dirname "$activate_path"))
+        if not set -q VIRTUAL_ENV; or test "$VIRTUAL_ENV" != "$activate_root"
+            if set -q VIRTUAL_ENV
+                deactivate >/dev/null 2>/dev/null
+            end
+            source "$activate_path"
+            set -gx RPY_AUTO_VENV "$activate_root"
+        end
     end
 end
 
@@ -170,6 +188,8 @@ __rpy_autoenv
 func zshShellInit() string {
 	return strings.TrimSpace(`
 # rpy shell integration
+export RPY_SHELL_INIT=1
+
 function rpy() {
   if [ "$#" -ge 3 ] && [ "$1" = "env" ] && [ "$2" = "use" ]; then
     local _rpy_use_activate=""
@@ -211,16 +231,24 @@ function rpy() {
 }
 
 _rpy_autoenv() {
-  local current="$PWD/.venv"
+  local _rpy_activate_path=""
+  _rpy_activate_path="$(command rpy env activate --shell zsh --path 2>/dev/null || true)"
 
-  if [ -n "${RPY_AUTO_VENV:-}" ] && [ "${VIRTUAL_ENV:-}" = "$RPY_AUTO_VENV" ] && [ "$current" != "$RPY_AUTO_VENV" ]; then
+  if [ -n "${RPY_AUTO_VENV:-}" ] && [ "${VIRTUAL_ENV:-}" = "$RPY_AUTO_VENV" ] && [ -z "$_rpy_activate_path" ]; then
     deactivate >/dev/null 2>&1 || true
     unset RPY_AUTO_VENV
   fi
 
-  if [ -z "${VIRTUAL_ENV:-}" ] && [ -f "$current/bin/activate" ]; then
-    . "$current/bin/activate"
-    export RPY_AUTO_VENV="$current"
+  if [ -n "$_rpy_activate_path" ]; then
+    local _rpy_activate_root
+    _rpy_activate_root="$(dirname "$(dirname "$_rpy_activate_path")")"
+    if [ "${VIRTUAL_ENV:-}" != "$_rpy_activate_root" ]; then
+      if [ -n "${VIRTUAL_ENV:-}" ]; then
+        deactivate >/dev/null 2>&1 || true
+      fi
+      . "$_rpy_activate_path"
+      export RPY_AUTO_VENV="$_rpy_activate_root"
+    fi
   fi
 }
 
