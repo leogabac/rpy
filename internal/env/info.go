@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+
+	"github.com/pterm/pterm"
 )
 
 type Info struct {
@@ -92,16 +94,38 @@ func PrintCurrentEnvInfo() error {
 		return err
 	}
 
-	fmt.Printf("kind: %s\n", info.Kind)
-	fmt.Printf("name: %s\n", info.Name)
-	fmt.Printf("root: %s\n", info.Root)
-	fmt.Printf("exists: %t\n", info.Exists)
-	fmt.Printf("bin: %s\n", info.BinDir)
-	fmt.Printf("python: %s\n", info.Python)
-	fmt.Printf("pip: %s\n", info.Pip)
-	fmt.Printf("activate: %s\n", info.Activate)
+	pterm.Println(pterm.FgGray.Sprint("env"))
+	printInfoLine("selected", displayEnvName(info))
+	printInfoLine("root", shortenPath(info.Root))
+	printInfoLine("status", envStatus(info.Exists))
+	printInfoLine("python", shortenPath(info.Python))
+	printInfoLine("pip", shortenPath(info.Pip))
+	printInfoLine("activate", shortenPath(info.Activate))
 
 	return nil
+}
+
+func printInfoLine(label, value string) {
+	pterm.Println(
+		pterm.FgGray.Sprint("  "+label+": ") +
+			value,
+	)
+}
+
+func displayEnvName(info Info) string {
+	if info.Kind == "shared" {
+		return pterm.FgLightGreen.Sprint("shared:" + info.Name)
+	}
+
+	return pterm.FgLightGreen.Sprint("local")
+}
+
+func envStatus(exists bool) string {
+	if exists {
+		return pterm.FgLightGreen.Sprint("ready")
+	}
+
+	return pterm.FgGray.Sprint("missing")
 }
 
 func scriptsDir(root string) string {

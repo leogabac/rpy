@@ -1,10 +1,9 @@
 package cmd
 
 import (
-	"fmt"
-
 	"rpy/internal/doctor"
 
+	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 )
 
@@ -29,18 +28,18 @@ The first version should stay simple:
 			return err
 		}
 
+		pterm.Println(pterm.FgGray.Sprint("doctor"))
 		for _, item := range report {
-			status := "ok"
+			prefix := pterm.FgLightGreen.Sprint("  OK  ")
 			if !item.OK {
-				status = "fail"
+				prefix = pterm.FgRed.Sprint("  !!  ")
 			}
-
 			if item.Detail != "" {
-				fmt.Printf("[%s] %s: %s\n", status, item.Name, item.Detail)
+				pterm.Println(prefix + item.Name + pterm.FgGray.Sprint(": "+item.Detail))
 				continue
 			}
 
-			fmt.Printf("[%s] %s\n", status, item.Name)
+			pterm.Println(prefix + item.Name)
 		}
 
 		return nil
