@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+
+	"rpy/internal/python"
 )
 
 // CreateProjectVenv creates a local .venv directory in the current working directory.
@@ -41,12 +43,11 @@ func CreateProjectVenv(python string) error {
 
 func findPython(requested string) (string, error) {
 	if requested != "" {
-		path, err := exec.LookPath(requested)
+		interpreter, err := python.Resolve(requested)
 		if err != nil {
-			return "", fmt.Errorf("could not find requested python interpreter %q on PATH", requested)
+			return "", fmt.Errorf("could not resolve requested python interpreter %q: %w", requested, err)
 		}
-
-		return path, nil
+		return interpreter.Path, nil
 	}
 
 	for _, name := range []string{"python", "python3"} {

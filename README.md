@@ -19,6 +19,8 @@ It is still useful on HPC systems, where you often do not get to choose the mach
 
 So `rpy` is my attempt to build a smaller tool around the pieces I use.
 
+The project is deliberately Linux-first. Managed Python installs are built from upstream CPython source instead of relying on interpreter discovery or bundled system dependency management.
+
 ## Current MVP
 
 The current CLI is intentionally narrow:
@@ -27,10 +29,25 @@ The current CLI is intentionally narrow:
 - `rpy env path`
 - `rpy env info`
 - `rpy env activate`
+- `rpy py install 3.12.3`
 - `rpy py list`
 - `rpy py which 3.12`
 - `rpy run ...`
 - `rpy pip ...`
+
+`rpy py install` downloads `Python-<version>.tgz` from `python.org`, runs `./configure`, `make`, and `make install`, and places the result under `~/.rpy/pythons/<version>/`.
+
+Build dependencies are not installed for you. That is intentional. Set your system up the way you prefer, then let `rpy` compile against it.
+
+On Debian or Ubuntu you will usually want something close to:
+
+```sh
+sudo apt install build-essential libssl-dev zlib1g-dev \
+  libbz2-dev libreadline-dev libsqlite3-dev libffi-dev \
+  liblzma-dev tk-dev uuid-dev
+```
+
+If configure or build steps fail, install the missing system libraries yourself and retry, similar to the `pyenv` workflow.
 
 Activation works by printing a shell snippet because a subprocess cannot mutate
 your current shell session directly:

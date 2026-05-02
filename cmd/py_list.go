@@ -8,7 +8,7 @@ import (
 
 var pyListCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List available Python interpreters",
+	Short: "List managed Python runtimes",
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return python.PrintDiscovered()

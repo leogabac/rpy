@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"strings"
 )
 
@@ -39,34 +38,10 @@ func PrintResolved(query string) error {
 }
 
 func Discover() ([]Interpreter, error) {
-	seen := make(map[string]bool)
-	items := make([]Interpreter, 0, 16)
-
-	managed, err := discoverManaged()
+	items, err := discoverManaged()
 	if err != nil {
 		return nil, err
 	}
-	for _, item := range managed {
-		if seen[item.Path] {
-			continue
-		}
-		seen[item.Path] = true
-		items = append(items, item)
-	}
-
-	pathItems := discoverPath()
-	for _, item := range pathItems {
-		if seen[item.Path] {
-			continue
-		}
-		seen[item.Path] = true
-		items = append(items, item)
-	}
-
-	slices.SortFunc(items, func(a, b Interpreter) int {
-		return strings.Compare(a.Name+"\t"+a.Path, b.Name+"\t"+b.Path)
-	})
-
 	return items, nil
 }
 
@@ -90,12 +65,6 @@ func Resolve(query string) (Interpreter, error) {
 
 	if path, err := exec.LookPath(query); err == nil {
 		return Interpreter{Name: filepath.Base(path), Path: path, Source: "PATH"}, nil
-	}
-
-	for _, item := range discoverPath() {
-		if matches(item, query) {
-			return item, nil
-		}
 	}
 
 	return Interpreter{}, fmt.Errorf("no python interpreter matched %q", query)
@@ -122,48 +91,43 @@ func discoverManaged() ([]Interpreter, error) {
 			continue
 		}
 
-		candidate := filepath.Join(root, entry.Name(), "bin", "python")
-		if _, err := os.Stat(candidate); err == nil {
-			items = append(items, Interpreter{
-				Name:   entry.Name(),
-				Path:   candidate,
-				Source: "managed",
-			})
-		}
-	}
-
-	return items, nil
-}
-
-func discoverPath() []Interpreter {
-	candidates := []string{
-		"python",
-		"python3",
-		"python3.9",
-		"python3.10",
-		"python3.11",
-		"python3.12",
-		"python3.13",
-		"python3.14",
-	}
-
-	items := make([]Interpreter, 0, len(candidates))
-	for _, name := range candidates {
-		path, err := exec.LookPath(name)
+		candidate, err := managedPythonPath(filepath.Join(root, entry.Name()))
 		if err != nil {
 			continue
 		}
 
 		items = append(items, Interpreter{
-			Name:   name,
-			Path:   path,
-			Source: "PATH",
+			Name:   entry.Name(),
+			Path:   candidate,
+			Source: "managed",
 		})
 	}
 
-	return items
+	return items, nil
 }
 
+func managedPythonPath(root string) (string, error) {
+	candidates := []string{
+		filepath.Join(root, "bin", "python"),
+		filepath.Join(root, "bin", "python3"),
+	}
+
+	matches, err := filepath.Glob(filepath.Join(root, "bin", "python3.*"))
+	if err != nil {
+		return "", err
+	}
+	candidates = append(candidates, matches...)
+
+	for _, candidate := range candidates {
+		info, err := os.Stat(candidate)
+		if err != nil || info.IsDir() {
+			continue
+		}
+		return candidate, nil
+	}
+
+	return "", os.ErrNotExist
+}
 func matches(item Interpreter, query string) bool {
 	if item.Name == query {
 		return true
