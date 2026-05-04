@@ -11,6 +11,7 @@ import (
 )
 
 const projectSelectionFile = ".rpy-env"
+const shellSelectionEnv = "RPY_ENV_SELECTION"
 
 var sharedEnvNamePattern = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
 
@@ -69,13 +70,13 @@ func PrintEnvs() error {
 		return err
 	}
 
-	selected, err := currentSharedEnvName()
+	selected, forceLocal, err := currentEnvSelection()
 	if err != nil {
 		return err
 	}
 
 	currentKind := "project"
-	if selected != "" {
+	if selected != "" && !forceLocal {
 		currentKind = "shared"
 	}
 
@@ -116,22 +117,22 @@ func UseSharedEnv(name string) error {
 		return fmt.Errorf("shared environment %q does not exist at %s", name, info.Root)
 	}
 
-	cwd, err := os.Getwd()
+	root, err := ProjectRoot()
 	if err != nil {
 		return err
 	}
 
-	path := filepath.Join(cwd, projectSelectionFile)
+	path := filepath.Join(root, projectSelectionFile)
 	return os.WriteFile(path, []byte(info.Name+"\n"), 0o644)
 }
 
 func UseLocalEnv() error {
-	cwd, err := os.Getwd()
+	root, err := ProjectRoot()
 	if err != nil {
 		return err
 	}
 
-	path := filepath.Join(cwd, projectSelectionFile)
+	path := filepath.Join(root, projectSelectionFile)
 	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -176,25 +177,51 @@ func RemoveLocalEnv() error {
 }
 
 func currentSharedEnvName() (string, error) {
-	cwd, err := os.Getwd()
+	name, forceLocal, err := currentEnvSelection()
 	if err != nil {
 		return "", err
 	}
+	if forceLocal {
+		return "", nil
+	}
+	return name, nil
+}
 
-	data, err := os.ReadFile(filepath.Join(cwd, projectSelectionFile))
+func currentEnvSelection() (string, bool, error) {
+	if value := strings.TrimSpace(os.Getenv(shellSelectionEnv)); value != "" {
+		if value == "local" {
+			return "", true, nil
+		}
+		name, err := validateSharedEnvName(value)
+		if err != nil {
+			return "", false, err
+		}
+		return name, false, nil
+	}
+
+	root, err := ProjectRoot()
+	if err != nil {
+		return "", false, err
+	}
+
+	data, err := os.ReadFile(filepath.Join(root, projectSelectionFile))
 	if err != nil {
 		if os.IsNotExist(err) {
-			return "", nil
+			return "", false, nil
 		}
-		return "", err
+		return "", false, err
 	}
 
 	name := strings.TrimSpace(string(data))
 	if name == "" {
-		return "", nil
+		return "", false, nil
 	}
 
-	return validateSharedEnvName(name)
+	validated, err := validateSharedEnvName(name)
+	if err != nil {
+		return "", false, err
+	}
+	return validated, false, nil
 }
 
 func sharedEnvRoot() (string, error) {

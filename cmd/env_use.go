@@ -11,8 +11,16 @@ var envUseActivate bool
 var envUseCmd = &cobra.Command{
 	Use:   "use <name|local>",
 	Short: "Select the environment for the current project",
-	Args:  cobra.ExactArgs(1),
+	Long: `Select the environment for the current project.
+
+Without --activate, this persists the selection in the project.
+With --activate, the selection is temporary for the current shell session and does not write a project file.`,
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if envUseActivate {
+			return env.PrintUseAndActivateCommand(args[0], "")
+		}
+
 		if args[0] == "local" {
 			if err := env.UseLocalEnv(); err != nil {
 				return err
@@ -23,15 +31,11 @@ var envUseCmd = &cobra.Command{
 			}
 		}
 
-		if envUseActivate {
-			return env.PrintActivateCommand("")
-		}
-
 		return nil
 	},
 }
 
 func init() {
 	envCmd.AddCommand(envUseCmd)
-	envUseCmd.Flags().BoolVar(&envUseActivate, "activate", false, "Print the activation command after switching environments")
+	envUseCmd.Flags().BoolVar(&envUseActivate, "activate", false, "Temporarily activate the selection for the current shell without writing a project file")
 }

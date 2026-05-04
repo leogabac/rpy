@@ -56,7 +56,11 @@ rpy() {
       _rpy_use_args+=("$arg")
     done
     if [ -n "$_rpy_use_activate" ]; then
-      command rpy env use "${_rpy_use_args[@]}" || return $?
+      if [ "${#_rpy_use_args[@]}" -ne 1 ]; then
+        command rpy env use "${_rpy_use_args[@]}" --activate
+        return $?
+      fi
+      export RPY_ENV_SELECTION="${_rpy_use_args[0]}"
       local _rpy_activate_path
       _rpy_activate_path="$(command rpy env activate --shell bash --path)" || return $?
       if [ -n "${VIRTUAL_ENV:-}" ] && [ "${VIRTUAL_ENV}" != "$(dirname "$(dirname "$_rpy_activate_path")")" ]; then
@@ -66,6 +70,10 @@ rpy() {
       export RPY_AUTO_VENV="$(dirname "$(dirname "$_rpy_activate_path")")"
       return $?
     fi
+    command rpy env use "${_rpy_use_args[@]}" || return $?
+    unset RPY_ENV_SELECTION
+    _rpy_autoenv
+    return $?
   fi
 
   if [ "$#" -ge 2 ] && [ "$1" = "env" ] && [ "$2" = "activate" ]; then
@@ -131,8 +139,11 @@ function rpy
             set passthrough $passthrough $arg
         end
         if test $use_activate -eq 1
-            command rpy env use $passthrough
-            or return $status
+            if test (count $passthrough) -ne 1
+                command rpy env use $passthrough --activate
+                return $status
+            end
+            set -gx RPY_ENV_SELECTION "$passthrough[1]"
             set -l activate_path (command rpy env activate --shell fish --path)
             or return $status
             set -l activate_root (dirname (dirname "$activate_path"))
@@ -143,6 +154,11 @@ function rpy
             set -gx RPY_AUTO_VENV "$activate_root"
             return $status
         end
+        command rpy env use $passthrough
+        or return $status
+        set -e RPY_ENV_SELECTION
+        __rpy_autoenv
+        return $status
     end
 
     if test (count $argv) -ge 2; and test "$argv[1]" = "env"; and test "$argv[2]" = "activate"
@@ -203,7 +219,11 @@ function rpy() {
       _rpy_use_args+=("$arg")
     done
     if [ -n "$_rpy_use_activate" ]; then
-      command rpy env use "${_rpy_use_args[@]}" || return $?
+      if [ "${#_rpy_use_args[@]}" -ne 1 ]; then
+        command rpy env use "${_rpy_use_args[@]}" --activate
+        return $?
+      fi
+      export RPY_ENV_SELECTION="${_rpy_use_args[0]}"
       local _rpy_activate_path
       _rpy_activate_path="$(command rpy env activate --shell zsh --path)" || return $?
       if [ -n "${VIRTUAL_ENV:-}" ] && [ "${VIRTUAL_ENV}" != "$(dirname "$(dirname "$_rpy_activate_path")")" ]; then
@@ -213,6 +233,10 @@ function rpy() {
       export RPY_AUTO_VENV="$(dirname "$(dirname "$_rpy_activate_path")")"
       return $?
     fi
+    command rpy env use "${_rpy_use_args[@]}" || return $?
+    unset RPY_ENV_SELECTION
+    _rpy_autoenv
+    return $?
   fi
 
   if [ "$#" -ge 2 ] && [ "$1" = "env" ] && [ "$2" = "activate" ]; then

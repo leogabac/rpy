@@ -219,6 +219,9 @@ rpy env use glass --activate
 rpy env use local --activate
 ```
 
+`rpy env use <name>` persists the selection for the project by writing `.rpy-env`.
+`rpy env use <name> --activate` is different: it is temporary for the current shell session and does not write `.rpy-env`.
+
 Remove a shared environment:
 
 ```sh

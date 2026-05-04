@@ -49,11 +49,11 @@ func ProjectEnvInfo() (Info, error) {
 }
 
 func CurrentEnvInfo() (Info, error) {
-	name, err := currentSharedEnvName()
+	name, forceLocal, err := currentEnvSelection()
 	if err != nil {
 		return Info{}, err
 	}
-	if name != "" {
+	if name != "" && !forceLocal {
 		return SharedEnvInfo(name)
 	}
 
